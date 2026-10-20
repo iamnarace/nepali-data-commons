@@ -32,7 +32,7 @@ def _validate(a) -> int:
 
 
 def _review(a) -> int:
-    rec = review(a.file, a.id, a.status, a.reviewer, a.notes or "", a.ack_warnings)
+    rec = review(a.file, a.id, a.status, a.reviewer, a.notes or "", a.ack_warnings, a.attests_fluent_nepali)
     print(f"{rec['id']} -> {rec['status']} (reviewer {rec['reviewer']})")
     return 0
 
@@ -77,6 +77,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--notes")
     r.add_argument("--ack-warnings", action="store_true",
                    help="confirm you inspected the warnings (required to approve if any)")
+    r.add_argument("--attests-fluent-nepali", action="store_true",
+                   help="record that you, the reviewer, are a fluent Nepali speaker (self-declared, unverified)")
     r.set_defaults(fn=_review)
     d = sub.add_parser("remove", help="takedown: delete a record and log it (content-free)")
     d.add_argument("file")

@@ -105,11 +105,18 @@ def validate_record(r: dict) -> list[Finding]:
             warn("code-mixed", f"{lat:.0%} Latin letters: check this is intentional code-mixing")
         for issue in tc.devanagari_issues(text):
             warn("malformed", issue)
+        for issue in tc.punctuation_issues(text, r.get("kind")):
+            warn("punctuation", issue)
         for f in tc.pii_flags(text):
             warn("pii", f"possible personal data: {f}")
     elif "text_ne" in r:
         err("type", "text_ne must be a non-empty string")
     en = r.get("text_en")
+    if isinstance(en, str) and isinstance(text, str) and en.strip() and \
+            tc.normalize_for_dedup(en) == tc.normalize_for_dedup(text):
+        warn("untranslated", "text_en is identical to text_ne")
+    if isinstance(en, str) and en.strip() and tc.script_ratio(en)[0] > 0.2:
+        warn("text-en-script", "text_en contains a large share of Devanagari; is it really English?")
     if isinstance(en, str):
         for f in tc.pii_flags(en):
             warn("pii", f"possible personal data in text_en: {f}")

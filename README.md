@@ -7,7 +7,8 @@ removal requests.
 
 > **Status: v0.1, early.** The checks are heuristics that flag things for humans; they do not verify
 > translation quality, naturalness, dialect or offensiveness. The bundled `data/sample.jsonl` has 6 invented
-> demo sentences, written with AI assistance and **not reviewed by a native speaker**.
+> demo sentences, written with AI assistance and **not reviewed by a native speaker** (see
+> [docs/LANGUAGE_REVIEW.md](docs/LANGUAGE_REVIEW.md)).
 
 ## Why
 The community already keeps good *lists* of Nepali datasets (for example `pemagrg1/Nepali-Datasets`,
@@ -30,6 +31,10 @@ validation or contribution tooling — and web searches; not an exhaustive surve
   acknowledged; full `review_history` kept.
 - **Export** accepted rows only, to JSONL or CSV, contributor handle hidden by default, plus an auto-generated
   **dataset card** (counts, licences, reviewers, SHA-256, limitations). Mixed licences are refused unless allowed.
+- **Language review kept separate from automation:** punctuation/translation heuristics are warnings only;
+  `--attests-fluent-nepali` records a *self-declared* fluent reviewer and the dataset card reports the count
+  ([docs/LANGUAGE_REVIEW.md](docs/LANGUAGE_REVIEW.md)).
+- **Safe CSV export:** UTF-8 with BOM (Excel shows Devanagari correctly) and formula-injection neutralisation.
 - **Takedown:** `ndc remove` deletes a record and logs a content-free entry (id, reason, date).
 
 ## Install and use
@@ -63,9 +68,16 @@ exported 3 records -> out/v0.1.jsonl (card: out/v0.1.DATASET_CARD.md)
 removed ex-006; recorded in d.jsonl.takedowns.jsonl
 ```
 
+## Using the data with nepali-eval
+[nepali-eval](https://github.com/iamnarace/nepali-eval) can turn accepted records that have both `text_ne` and `text_en`
+into evaluation tasks: `nepali-eval import-ndc out/v0.1.jsonl --out tasks.jsonl --direction ne-en`. The projects share no
+code. Status vocabularies differ on purpose: here `accepted` means "a second person reviewed it"; there `reviewed` means
+"a named reviewer attested fluency and approved". Imported tasks therefore start as `unreviewed`.
+(Available once the nepali-eval pull request that adds `import-ndc` is merged.)
+
 ## Development
 ```bash
-ruff check . && python -W error -m pytest -q     # 39 tests
+ruff check . && python -W error -m pytest -q     # 58 tests
 ```
 `src/nepali_data_commons/{textcheck,records,workflow,cli}.py`. CI runs lint + tests on Python 3.10/3.12/3.13 and
 validates every `data/*.jsonl` on pull requests.

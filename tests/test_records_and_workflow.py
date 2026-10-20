@@ -164,3 +164,63 @@ def test_cli_end_to_end(tmp_path, capsys):
     assert main(["validate", str(p2)]) == 0
     assert main(["validate", str(p2), "--strict"]) == 1
     assert main(["init"]) == 0
+
+
+# ---- quality / security additions -------------------------------------------------------------
+from nepali_data_commons import textcheck as tc  # noqa: E402
+from nepali_data_commons.workflow import csv_safe  # noqa: E402
+
+
+@pytest.mark.parametrize("patch,code", [
+    ({"text_ne": "म घर जान्छु."}, "punctuation"),
+    ({"text_ne": "म घर जान्छु हिजो साँझ"}, "punctuation"),
+    ({"text_ne": "कहाँ जाने ?"}, "punctuation"),
+    ({"text_ne": "म घर जान्छु।।"}, "punctuation"),
+    ({"text_en": "आज मौसम राम्रो छ।", "text_ne": "आज मौसम राम्रो छ।"}, "untranslated"),
+    ({"text_en": "आज मौसम राम्रो छ।"}, "text-en-script"),
+])
+def test_new_warnings(patch, code):
+    f = validate_record({**GOOD, **patch})
+    assert code in codes(f, "warning") and not codes(f, "error")
+
+
+def test_punctuation_not_checked_for_phrases_or_clean_sentences():
+    assert tc.punctuation_issues("धन्यवाद", "phrase") == []
+    assert tc.punctuation_issues("म घर जान्छु।", "sentence") == []
+    assert tc.punctuation_issues("तपाईंलाई कस्तो छ?", "sentence") == []
+
+
+@pytest.mark.parametrize("value,expected", [
+    ("=HYPERLINK(\"http://x\")", "'=HYPERLINK(\"http://x\")"), ("+1", "'+1"), ("-2", "'-2"), ("@sum", "'@sum"),
+    ("\tx", "'\tx"), ("normal", "normal"), ("नमस्ते", "नमस्ते"), ("", ""), (None, None), (5, 5),
+])
+def test_csv_safe(value, expected):
+    assert csv_safe(value) == expected
+
+
+def test_csv_export_is_formula_safe_and_excel_friendly(tmp_path):
+    rows = [accepted("a", "म घर जान्छु।"), accepted("b", "म बजार जान्छु।")]
+    rows[0]["text_en"] = "=2+2"
+    p = write(tmp_path, rows)
+    info = export(p, tmp_path / "o.csv", fmt="csv")
+    raw = Path(info["file"]).read_bytes()
+    assert raw.startswith(b"\xef\xbb\xbf")                       # BOM so Excel decodes Devanagari
+    text = raw.decode("utf-8-sig")
+    assert "'=2+2" in text and ",=2+2" not in text
+    assert "म घर जान्छु।" in text
+    jsonl = export(p, tmp_path / "o.jsonl")                      # JSONL keeps the raw value unchanged
+    assert any(r["text_en"] == "=2+2" for r in read_jsonl(jsonl["file"]))
+
+
+def test_fluency_attestation_is_recorded_and_reported(tmp_path):
+    p = write(tmp_path, [GOOD, {**GOOD, "id": "g2", "text_ne": "म बजार जान्छु।"}])
+    review(p, "g1", "reviewed", "bob", attests_fluent_nepali=True)
+    review(p, "g1", "accepted", "carol")
+    review(p, "g2", "reviewed", "bob")
+    review(p, "g2", "accepted", "carol")
+    hist = read_jsonl(p)[0]["review_history"]
+    assert hist[0]["attests_fluent_nepali"] is True and hist[1]["attests_fluent_nepali"] is False
+    card = Path(export(p, tmp_path / "x.jsonl")["card"]).read_text(encoding="utf-8")
+    assert "attested* fluent Nepali: 1 of 2" in card and "not verified" in card
+    assert main(["review", str(p), "--id", "g1", "--status", "rejected", "--reviewer", "dan",
+                 "--attests-fluent-nepali"]) == 0

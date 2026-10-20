@@ -25,12 +25,23 @@ class WorkflowError(ValueError):
     pass
 
 
+_FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
+
+
+def csv_safe(value):
+    """Neutralise spreadsheet formula injection: a cell starting with = + - @ (or tab/CR) is prefixed with
+    an apostrophe, which Excel/LibreOffice/Sheets show as plain text. Only affects the CSV export."""
+    if isinstance(value, str) and value.startswith(_FORMULA_START):
+        return "'" + value
+    return value
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def review(path, record_id: str, status: str, reviewer: str, notes: str = "",
-           ack_warnings: bool = False) -> dict:
+           ack_warnings: bool = False, attests_fluent_nepali: bool = False) -> dict:
     if not reviewer or not reviewer.strip():
         raise WorkflowError("a reviewer name/handle is required")
     rows = read_jsonl(path)
@@ -56,7 +67,8 @@ def review(path, record_id: str, status: str, reviewer: str, notes: str = "",
     rec["status"] = status
     rec["reviewer"] = reviewer
     rec.setdefault("review_history", []).append(
-        {"status": status, "reviewer": reviewer, "date": _now()})
+        {"status": status, "reviewer": reviewer, "date": _now(),
+         "attests_fluent_nepali": bool(attests_fluent_nepali)})
     if notes:
         rec["review_notes"] = notes
     write_jsonl(path, rows)
@@ -102,11 +114,12 @@ def export(path, out, fmt: str = "jsonl", include_contributor: bool = False,
             for r in accepted:
                 f.write(json.dumps({k: r.get(k) for k in fields if k in r}, ensure_ascii=False) + "\n")
     elif fmt == "csv":
-        with out.open("w", encoding="utf-8", newline="") as f:
+        # utf-8-sig: the BOM makes Excel open Devanagari correctly; csv_safe blocks formula injection.
+        with out.open("w", encoding="utf-8-sig", newline="") as f:
             w = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
             w.writeheader()
             for r in accepted:
-                w.writerow({k: r.get(k, "") for k in fields})
+                w.writerow({k: csv_safe(r.get(k, "")) for k in fields})
     else:
         raise WorkflowError("format must be jsonl or csv")
     digest = hashlib.sha256(out.read_bytes()).hexdigest()
@@ -129,6 +142,8 @@ def stats(rows: list[dict]) -> dict:
 
 def dataset_card(rows, accepted, filename: str, digest: str, now: str | None = None) -> str:
     s = stats(accepted)
+    fluent = sum(1 for r in accepted
+                 if any(h.get("attests_fluent_nepali") for h in r.get("review_history", [])))
     reviewers = sorted({h["reviewer"] for r in accepted for h in r.get("review_history", [])}
                        | {r["reviewer"] for r in accepted if r.get("reviewer")})
     lines = [
@@ -140,7 +155,9 @@ def dataset_card(rows, accepted, filename: str, digest: str, now: str | None = N
         f"- Records with English text: {s['with_english']}",
         f"- Kinds: {s['kind']}", f"- Regions (self-reported): {s['regions']}",
         f"- Domains (self-reported): {s['domains']}",
-        f"- Reviewers (handles): {', '.join(reviewers) or 'none'}", "",
+        f"- Reviewers (handles): {', '.join(reviewers) or 'none'}",
+        f"- Accepted records with a reviewer who *attested* fluent Nepali: {fluent} of {len(accepted)} "
+        "(self-declared; not verified by this tool)", "",
         "## Provenance", "",
         "Each row carries `license`, `source_type` and (when not original) `source_url`. Contributors "
         "attested ownership/consent at submission (`consent: true`). The attestation is not independently "
