@@ -124,3 +124,23 @@ def near_duplicates(texts: dict[str, str], threshold: float = 0.85) -> list[tupl
         for g in s:
             index[g].append(k)
     return out
+
+
+_END_MARKS = ("\u0964", "?", "!", "\u0965")
+
+
+def punctuation_issues(text: str, kind: str | None) -> list[str]:
+    """Mechanical punctuation checks for sentence-like records. Heuristic: a flag, not a verdict
+    (informal writing legitimately varies; reviewers decide)."""
+    issues: list[str] = []
+    t = text.strip()
+    if kind in ("sentence", "paragraph", "dialogue") and t:
+        if t.endswith("."):
+            issues.append("ends with '.'; Nepali sentences normally end with '\u0964' (danda)")
+        elif not t.endswith(_END_MARKS) and len(t.split()) > 2:
+            issues.append("sentence has no ending mark (\u0964 / ? / !)")
+    if " \u0964" in t or " ?" in t or " !" in t:
+        issues.append("space before the sentence-ending mark")
+    if "\u0964\u0964" in t or "..." in t:
+        issues.append("repeated end marks or ellipsis")
+    return issues
