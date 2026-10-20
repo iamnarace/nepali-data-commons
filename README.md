@@ -81,7 +81,7 @@ removed ex-006; recorded in d.jsonl.takedowns.jsonl
 into evaluation tasks: `nepali-eval import-ndc out/v0.1.jsonl --out tasks.jsonl --direction ne-en`. The projects share no
 code. Status vocabularies differ on purpose: here `accepted` means "a second person reviewed it"; there `reviewed` means
 "a named reviewer attested fluency and approved". Imported tasks therefore start as `unreviewed`.
-(Available once the nepali-eval pull request that adds `import-ndc` is merged.)
+(`import-ndc` is available in nepali-eval on `main` as of 2026-10-20.)
 
 ## Development
 ```bash
