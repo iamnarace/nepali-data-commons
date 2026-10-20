@@ -10,6 +10,14 @@ removal requests.
 > demo sentences, written with AI assistance and **not reviewed by a native speaker** (see
 > [docs/LANGUAGE_REVIEW.md](docs/LANGUAGE_REVIEW.md)).
 
+![Terminal session: ndc validate reporting errors and warnings on a small illustrative contribution file](docs/screenshots/terminal-validate.png)
+
+*Real output of `ndc validate`. The five records are illustrative demo data written for this screenshot (an email address, a duplicate, an English-only record), not real contributions.*
+
+![Terminal session: validate, two-person review, export with a dataset card, and a logged takedown](docs/screenshots/terminal-workflow.png)
+
+*Real output of the review, export and takedown commands on a copy of the bundled sample file.*
+
 ## Why
 The community already keeps good *lists* of Nepali datasets (for example `pemagrg1/Nepali-Datasets`,
 `theranjitraut/Nepali-Datasets-Collection`, `IOST-ASCOL/nepali-datasets`). Those are links to existing data.
