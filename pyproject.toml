@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nepali-data-commons"
+version = "0.1.0"
+description = "Validation, review and export workflow for community-contributed Nepali text data"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "iamnarace and contributors" }]
+keywords = ["nepali", "dataset", "data-quality", "devanagari", "open-data"]
+classifiers = ["Programming Language :: Python :: 3", "Natural Language :: Nepali"]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+ndc = "nepali_data_commons.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
